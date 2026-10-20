@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: catalog
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog -d catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes: [postgres_data:/var/lib/postgresql/data]
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set in .env}
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [minio_data:/data]
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://catalog:${POSTGRES_PASSWORD}@postgres:5432/catalog
+      MINIO_ENDPOINT: minio:9000
+      MINIO_SECURE: "false"
+    depends_on:
+      postgres: {condition: service_healthy}
+      minio: {condition: service_started}
+    ports: ["8000:8000"]
+  bot:
+    build: ./bot
+    env_file: .env
+    environment: {API_BASE_URL: http://api:8000}
+    depends_on: [api]
+  web:
+    build: ./frontend
+    environment: {API_BASE_URL: http://api:8000}
+    depends_on: [api]
+    ports: ["3000:3000"]
+volumes:
+  postgres_data: {}
+  minio_data: {}

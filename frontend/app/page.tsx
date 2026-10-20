@@ -1,0 +1,2 @@
+type Product={id:string;name:string;image_url:string};
+export default async function Page(){const r=await fetch(`${process.env.API_BASE_URL}/api/products`,{cache:"no-store"}); const items:Product[]=r.ok?await r.json():[]; return <main><h1>Каталог</h1>{items.length?<ul>{items.map(x=><li key={x.id}><img src={x.image_url} alt={x.name} width="160"/><p>{x.name}</p></li>)}</ul>:<p>Товаров пока нет.</p>}</main>}
